@@ -479,20 +479,34 @@ def load_stl(fname):
 
   X = np.fromfile('../stl/'+fname, dtype=np.uint8)
   X = X.reshape((X.size/3/96/96, 3, 96, 96)).transpose((0,3,2,1))
+  print 'Shape After loading'
   dispImg(X[:100, :, :, [2,1,0]], 10, fname+'_org.jpg')
 
   n_jobs = 10
   cmap_size = (8,8)
   N = X.shape[0]
+  print N	
+  print type(N)
+  
+  #hog = cv2.HOGDescriptor()
+  #H = hog.compute(X)
+  print X.size
+  print features.hog(X[0], 8)
+  H = []
 
-  H = np.asarray(Parallel(n_jobs=n_jobs)( delayed(features.hog)(X[i]) for i in xrange(N) ))
-
-  H_img = np.repeat(np.asarray([ hog_picture(H[i], 9) for i in xrange(100) ])[:, :,:,np.newaxis], 3, 3)
+  #H = np.asarray(np.sqrt(X[i]) for i in xrange(N))
+  H = [features.hog(X[i], 8) for i in xrange(N)]
+  H = np.asarray(H)
+  print H.shape
+  # H = np.asarray(Parallel(n_jobs=n_jobs)( delayed(np.sqrt)(X[i]) for i in xrange(N) ))
+  print 'done'
+  
+  H_img = np.repeat(np.asarray([ hog_picture(H[i], 9) for i in range(100) ])[:, :,:,np.newaxis], 3, 3)
   dispImg(H_img, 10, fname+'_hog.jpg') 
   H = H.reshape((H.shape[0], H.size/N))
 
-  X_small = np.asarray(Parallel(n_jobs=n_jobs)( delayed(cv2.resize)(X[i], cmap_size) for i in xrange(N) ))
-  crcb = np.asarray(Parallel(n_jobs=n_jobs)( delayed(cv2.cvtColor)(X_small[i], cv.CV_RGB2YCrCb) for i in xrange(N) ))
+  X_small = np.asarray(Parallel(n_jobs=n_jobs)( delayed(cv2.resize)(X[i], cmap_size) for i in range(N) ))
+  crcb = np.asarray(Parallel(n_jobs=n_jobs)( delayed(cv2.cvtColor)(X_small[i], cv.CV_RGB2YCrCb) for i in range(N) ))
   crcb = crcb[:,:,:,1:]
   crcb = crcb.reshape((crcb.shape[0], crcb.size/N))
 
@@ -570,6 +584,7 @@ def update_db(seek, N, X, Y, fname):
     del db
 
 def extract_feature(net, model, blobs, N, train = False, device = None):
+  print device
   if type(net) is str:
     if train:
       caffe.Net.set_phase_train()
@@ -579,8 +594,9 @@ def extract_feature(net, model, blobs, N, train = False, device = None):
       net = caffe.Net(net)
     caffe.Net.set_phase_test()
   if not (device is None):
-    caffe.Net.set_mode_gpu()
-    caffe.Net.set_device(device)
+    #caffe.Net.set_mode_gpu()
+    #caffe.Net.set_device(device)
+    caffe.Net.set_mode_cpu()
 
   batch_size = net.blobs[blobs[0]].num
   res = [ [] for i in blobs ]
@@ -680,7 +696,7 @@ def DisKmeans(db, update_interval = None):
       write_net(db, dim, N_class, "'{:08}'".format(0))
       if iters == 0:
         write_db(np.zeros((N,N_class)), np.zeros((N,)), 'train_weight')
-        ret, net = extract_feature('net.prototxt', 'exp/'+db+'/save_iter_100000.caffemodel', ['output'], N, True, 0)
+        ret, net = extract_feature('net.prototxt', 'exp/'+db+'/save_iter_100000.caffemodel', ['output'], N, True, None)
         feature = ret[0].squeeze()
 
         gmm_model = TMM(N_class)
@@ -735,11 +751,10 @@ weight_decay: 0.0000
 snapshot: 100
 snapshot_prefix: "exp/test/save"
 snapshot_after_train:true
-solver_mode: GPU
+solver_mode: CPU
 debug_info: false
-sample_print: false
-device_id: 0"""%update_interval)
-      os.system('caffe train --solver=solver.prototxt --weights=init.caffemodel')
+sample_print: false"""%update_interval)
+      os.system('caffe train -solver solver.prototxt --weights=init.caffemodel')
       shutil.copyfile('exp/test/save_iter_%d.caffemodel'%update_interval, 'init.caffemodel')
 
       iters += 1

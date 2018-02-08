@@ -1,3 +1,8 @@
+Forked from piiswrong/dec
+
+
+
+
 # Deep Embedded Clustering
 
 This package implements the algorithm described in paper "Unsupervised Deep Embedding for Clustering Analysis". It depends on opencv, numpy, scipy and Caffe.
