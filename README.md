@@ -1,6 +1,7 @@
 Forked from piiswrong/dec
+#Image Clustering using Unsupervised Deep Embedding
 
-
+Implemented the Deep Embedded Clustering algorithm and classified the benthic dataset into 3 groups namely Lizard, Jamaica and Greece with an accuracy of 48.57% and an NMI of 0.6686.
 
 
 # Deep Embedded Clustering
